@@ -1,6 +1,6 @@
 # Simulator de Război Django
 
-## Pornire
+2## Pornire
 
 ```bash
 ./venv/bin/pip install -r requirements.txt
