@@ -1,0 +1,42 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+.eggs/
+.Python
+build/
+dist/
+venv/
+.env
+.venv/
+*.sqlite3
+*.db
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+coverage.xml
+htmlcov/
+
+# Django
+*.log
+local_settings.py
+/media/
+/staticfiles/
+staticfiles/
+
+# JetBrains / IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Project-local runtime artifacts
+celery_broker.sqlite3
+celery_results.sqlite3
+celery_worker.pid

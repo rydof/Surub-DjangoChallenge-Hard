@@ -1,0 +1,407 @@
+{% extends "base.html" %}
+
+{% block title %}Mobilization &amp; Peacetime Census{% endblock %}
+
+{% block extra_head %}
+<style>
+    .census-panel { margin-bottom: 16px; }
+    .census-panel .stat-strip { margin-bottom: 14px; }
+    .mobilization {
+        padding: 13px 15px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        background: rgba(9, 11, 14, 0.28);
+    }
+    .mobilization-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 8px;
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.09em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+    .mobilization-head strong {
+        font-size: 0.78rem;
+        font-weight: 600;
+        color: var(--green);
+        font-variant-numeric: tabular-nums;
+    }
+    .mobilization-foot {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+        margin-top: 7px;
+        font-family: var(--mono);
+        font-size: 0.58rem;
+        letter-spacing: 0.03em;
+        color: var(--muted-dim);
+    }
+    .command-panel { margin-bottom: 16px; }
+    .command-panel .tool-grid { row-gap: 10px; }
+    .intel-list { display: flex; flex-direction: column; gap: 8px; }
+    .intel-card {
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-left: 2px solid rgba(201, 163, 90, 0.45);
+        border-radius: 5px;
+        background: var(--surface-2);
+    }
+    .intel-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        flex-wrap: wrap;
+    }
+    .intel-head code {
+        color: var(--brass-bright);
+        background: var(--brass-dim);
+        border-color: rgba(201, 163, 90, 0.24);
+    }
+    .intel-stamp {
+        font-family: var(--mono);
+        font-size: 0.56rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted-dim);
+    }
+    .intel-message {
+        margin: 7px 0 0;
+        font-size: 0.82rem;
+        line-height: 1.6;
+        color: var(--text-soft);
+    }
+    .intel-raw { margin-top: 8px; }
+    .intel-raw summary {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        font-family: var(--mono);
+        font-size: 0.58rem;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+    .intel-raw summary:hover { color: var(--brass-bright); }
+    .intel-raw summary .chevron { width: 5px; height: 5px; margin-bottom: 2px; }
+    .intel-raw pre {
+        margin: 8px 0 0;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: 4px;
+        background: #0a0c0f;
+        color: var(--text-soft);
+        font-family: var(--mono);
+        font-size: 0.7rem;
+        line-height: 1.6;
+        overflow-x: auto;
+        max-height: 280px;
+    }
+    .registry-panel { margin-top: 16px; }
+    .registry-search { min-width: 250px; }
+    .registry-table { min-width: 840px; }
+    .registry-name { font-weight: 500; color: var(--text); }
+    .unit-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        flex-wrap: wrap;
+        color: var(--text-soft);
+        text-decoration: none;
+        font-weight: 500;
+    }
+    .unit-link:hover { color: var(--brass-bright); }
+    .health-value { font-family: var(--mono); font-size: 0.78rem; font-variant-numeric: tabular-nums; }
+    .health-value.is-hurt { color: var(--brass-bright); }
+    .health-value.is-critical { color: #eda1a1; }
+    @media (max-width: 720px) {
+        .registry-search { width: 100%; min-width: 0; }
+        .registry-panel .panel-head { width: 100%; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-head">
+    <div class="page-head-main">
+        <p class="eyebrow">Peacetime Census &middot; Recruitment Command</p>
+        <h1 class="page-title">Mobilization</h1>
+        <p class="page-sub">Download citizens from <code>/people</code> and dispatch parallel Celery batch tasks with automatic retry backoff and recursive key chaining.</p>
+    </div>
+    <div class="head-meta">
+        <span class="status-dot {% if total_people > 0 and undrafted_count == 0 %}text-green{% else %}text-brass{% endif %}"></span>
+        <span>{% if total_people == 0 %}Census awaiting manifest{% elif undrafted_count %}{{ undrafted_count }} awaiting commission{% else %}Manifest complete{% endif %}</span>
+    </div>
+</div>
+
+<section class="panel census-panel">
+    <div class="panel-head panel-head-tight">
+        <div>
+            <h2 class="section-title">Census Overview</h2>
+            <p class="section-sub">Registry totals and the current state of the mobilization effort.</p>
+        </div>
+        <span class="eyebrow-plain">Peacetime Ledger</span>
+    </div>
+
+    <div class="stat-strip">
+        <div class="stat-tile is-blue">
+            <span class="stat-label">Total Citizens</span>
+            <div class="stat-value">{{ total_people }}</div>
+            <div class="stat-note">On the census</div>
+        </div>
+        <div class="stat-tile is-green">
+            <span class="stat-label">Drafted Soldiers</span>
+            <div class="stat-value is-green">{{ drafted_count }}</div>
+            <div class="stat-note">Commissioned</div>
+        </div>
+        <div class="stat-tile is-brass">
+            <span class="stat-label">Undrafted</span>
+            <div class="stat-value is-brass">{{ undrafted_count }}</div>
+            <div class="stat-note">Awaiting assignment</div>
+        </div>
+        <div class="stat-tile is-brass">
+            <span class="stat-label">Hellstorm Key</span>
+            <div class="stat-value is-code">
+                {% if key_person %}
+                    <code>{{ key_person.key }}</code>
+                    <div class="stat-note">{{ key_person.name }}</div>
+                {% else %}
+                    <span class="muted">&mdash;</span>
+                    <div class="stat-note">No active key</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="mobilization">
+        <div class="mobilization-head">
+            <span>Mobilization Progress</span>
+            <strong>{{ draft_pct }}%</strong>
+        </div>
+        <div class="progress-track" role="progressbar" aria-valuenow="{{ draft_pct }}" aria-valuemin="0" aria-valuemax="100" aria-label="Mobilization progress">
+            <div class="progress-fill" style="width: {{ draft_pct }}%;"></div>
+        </div>
+        <div class="mobilization-foot">
+            <span>{{ drafted_count }} drafted</span>
+            <span>{{ undrafted_count }} awaiting commission</span>
+        </div>
+    </div>
+</section>
+
+<section class="panel command-panel">
+    <div class="panel-head">
+        <div>
+            <h2 class="section-title">Recruitment Command</h2>
+            <p class="section-sub">Pull the citizen manifest, draft in parallel batches, or follow an intercepted intel key.</p>
+        </div>
+        <span class="eyebrow-plain">Parallel Conscription</span>
+    </div>
+
+    <div class="tool-grid">
+        <form method="post" action="{% url 'people_download' %}" class="tool-group">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-secondary">Download /people</button>
+            <button type="submit" name="auto_draft" value="1" class="btn btn-primary">Run Full Parallel Sync</button>
+        </form>
+
+        <form method="post" action="{% url 'people_draft' %}" class="tool-group">
+            {% csrf_token %}
+            <input type="hidden" name="mode" value="remote">
+            <div class="tool-field">
+                <label for="num_batches" class="tool-label">Batches</label>
+                <input id="num_batches" type="number" name="num_batches" value="10" min="1" max="50" class="tool-input">
+            </div>
+            <button type="submit" class="btn btn-primary">Draft /draft/&lt;batch&gt;</button>
+        </form>
+
+        <form method="post" action="{% url 'people_draft' %}" class="tool-group">
+            {% csrf_token %}
+            <div class="tool-field">
+                <label for="batch_size" class="tool-label">Size</label>
+                <input id="batch_size" type="number" name="batch_size" value="10" min="1" max="100" class="tool-input">
+            </div>
+            <button type="submit" class="btn btn-secondary">Draft Locally</button>
+        </form>
+
+        <form method="post" action="{% url 'people_follow_key' %}" class="tool-group">
+            {% csrf_token %}
+            <div class="tool-field">
+                <label for="follow_key" class="tool-label">Intel Key</label>
+                <input id="follow_key" type="text" name="key" class="tool-input is-wide" placeholder="Follow /&lt;key&gt;&hellip;" value="{% if key_person and key_person.key != 'draft-info' %}{{ key_person.key }}{% endif %}">
+            </div>
+            <button type="submit" class="btn btn-secondary">Follow Key</button>
+        </form>
+    </div>
+
+    {% if total_people > 0 %}
+        <div class="danger-zone">
+            <div class="danger-copy">
+                <p class="danger-title">Irreversible Reset</p>
+                <p class="danger-sub">Remove every citizen, drafted unit, and intel log to start the census from zero.</p>
+            </div>
+            <form method="post" action="{% url 'people_reset' %}" onsubmit="return confirm('Delete all registered people, drafted units, and intel logs to start from 0?');">
+                {% csrf_token %}
+                <button type="submit" class="btn btn-danger">Clear All People</button>
+            </form>
+        </div>
+    {% endif %}
+</section>
+
+{% if tracked_task_ids %}
+    <div class="task-tracker" id="task-tracker">
+        <div class="task-tracker-head">
+            <h3 class="task-tracker-title">Active Celery Tasks ({{ tracked_task_ids|length }})</h3>
+            <span class="task-tracker-note">Polling every 1.5s</span>
+        </div>
+        <div class="task-list" id="task-statuses">
+            {% for tid in tracked_task_ids %}
+                <span class="task-pill" data-task-id="{{ tid }}"><code>{{ tid|slice:":8" }}</code> <span class="status" data-state="CHECKING">CHECKING</span></span>
+            {% endfor %}
+        </div>
+    </div>
+    <script>
+        (function() {
+            const ids = [{% for tid in tracked_task_ids %}"{{ tid }}"{% if not forloop.last %},{% endif %}{% endfor %}];
+            if (!ids.length) return;
+            async function poll() {
+                try {
+                    const resp = await fetch("{% url 'tasks_status' %}?ids=" + encodeURIComponent(ids.join(",")));
+                    const data = await resp.json();
+                    let pending = false;
+                    for (const item of data.tasks) {
+                        const el = document.querySelector(`#task-statuses [data-task-id="${item.id}"] .status`);
+                        if (el) {
+                            el.textContent = item.status;
+                            el.dataset.state = item.status;
+                        }
+                        if (item.status === "PENDING" || item.status === "STARTED") pending = true;
+                    }
+                    if (pending) setTimeout(poll, 1500);
+                } catch (e) {}
+            }
+            poll();
+        })();
+    </script>
+{% endif %}
+
+{% if intel_logs %}
+    <section class="panel">
+        <div class="panel-head panel-head-tight">
+            <div>
+                <h2 class="section-title">Intercepted Command Dispatches</h2>
+                <p class="section-sub">Intel collected while following remote draft keys.</p>
+            </div>
+            <span class="eyebrow-plain">{{ intel_logs|length }} logged</span>
+        </div>
+        <div class="intel-list">
+            {% for intel in intel_logs %}
+                <article class="intel-card">
+                    <div class="intel-head">
+                        <code>/{{ intel.key }}</code>
+                        <span class="intel-stamp">{{ intel.updated_at|date:"M d, H:i" }}</span>
+                    </div>
+                    <p class="intel-message">{% if intel.message %}{{ intel.message }}{% else %}<span class="muted">No message body recorded.</span>{% endif %}</p>
+                    {% if intel.raw_payload %}
+                        <details class="intel-raw">
+                            <summary><span class="chevron" aria-hidden="true"></span>Inspect raw JSON payload</summary>
+                            <pre>{{ intel.raw_payload }}</pre>
+                        </details>
+                    {% endif %}
+                </article>
+            {% endfor %}
+        </div>
+    </section>
+{% endif %}
+
+<section class="panel registry-panel">
+    <div class="panel-head">
+        <div>
+            <h2 class="section-title">Citizen &amp; Soldier Registry <span class="count-chip">{{ total_people }}</span></h2>
+            <p class="section-sub">Every registered citizen, their rank, and current unit assignment.</p>
+        </div>
+        {% if people %}
+            <input type="search" id="people-search" class="search-input registry-search" placeholder="Filter by name, rank, or key&hellip;" aria-label="Filter registry">
+        {% endif %}
+    </div>
+
+    {% if people %}
+        <div class="table-wrap">
+            <table class="registry-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Name</th>
+                        <th>Age</th>
+                        <th>Health</th>
+                        <th>Key</th>
+                        <th>Rank</th>
+                        <th>Assigned Unit</th>
+                    </tr>
+                </thead>
+                <tbody id="people-tbody">
+                    {% for person in people %}
+                        <tr data-search="{{ person.name|lower }} {{ person.rank|lower }} {{ person.key|lower }}">
+                            <td class="mono muted">#{{ person.external_id }}</td>
+                            <td><span class="registry-name">{{ person.name }}</span></td>
+                            <td class="mono">{{ person.age }}</td>
+                            <td><span class="health-value {% if person.health < 25 %}is-critical{% elif person.health < 100 %}is-hurt{% endif %}">{{ person.health }}</span></td>
+                            <td>{% if person.key %}<code>{{ person.key }}</code>{% else %}<span class="muted">&mdash;</span>{% endif %}</td>
+                            <td>
+                                {% if person.rank %}
+                                    <span class="badge badge-rank">{{ person.rank }}</span>
+                                {% else %}
+                                    <span class="badge badge-type">Undrafted</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if person.unit %}
+                                    <a href="{% url 'unit_detail' person.unit.id %}" class="unit-link">
+                                        {{ person.unit.name }}
+                                        <span class="badge {% if person.unit.team == 'Blue' %}badge-blue{% else %}badge-red{% endif %}">{{ person.unit.team }}</span>
+                                        <span class="badge badge-type">{{ person.unit.unit_type }}</span>
+                                    </a>
+                                {% else %}
+                                    <span class="muted">&mdash;</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="empty-state">
+            <span class="empty-icon" aria-hidden="true">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="9" cy="8" r="3"/>
+                    <path d="M3.5 20c0-3.6 2.5-5.5 5.5-5.5s5.5 1.9 5.5 5.5"/>
+                    <path d="M17 6v5M14.5 8.5h5"/>
+                </svg>
+            </span>
+            <h3>No citizens registered</h3>
+            <p>Start the Celery worker, then use <strong>Download /people</strong> or <strong>Run Full Parallel Sync</strong> to populate the census.</p>
+        </div>
+    {% endif %}
+</section>
+
+<script>
+    (function() {
+        const input = document.getElementById("people-search");
+        const rows = Array.from(document.querySelectorAll("#people-tbody tr"));
+        if (!input) return;
+        input.addEventListener("input", () => {
+            const q = input.value.trim().toLowerCase();
+            rows.forEach(row => {
+                const text = row.dataset.search || "";
+                row.style.display = (!q || text.includes(q)) ? "" : "none";
+            });
+        });
+    })();
+</script>
+{% endblock %}

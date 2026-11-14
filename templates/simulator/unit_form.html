@@ -1,0 +1,370 @@
+{% extends "base.html" %}
+
+{% block title %}Enlist Fighter &mdash; War Room{% endblock %}
+
+{% block extra_head %}
+<style>
+    .enlist-head {
+        max-width: 980px;
+        margin: 0 auto 24px;
+    }
+    .enlist-shell {
+        max-width: 980px;
+        margin: 0 auto;
+        display: grid;
+        grid-template-columns: minmax(0, 1.3fr) minmax(270px, 0.85fr);
+        gap: 16px;
+        align-items: start;
+    }
+    .form-head { margin-bottom: 20px; }
+    .form-head .section-sub { max-width: 52ch; }
+    .form-grid { display: grid; gap: 16px; }
+    .form-row-2 {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px;
+    }
+    .form-field label {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 6px;
+        font-family: var(--mono);
+        font-size: 0.62rem;
+        font-weight: 600;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--muted);
+    }
+    .field-optional {
+        font-size: 0.55rem;
+        font-weight: 500;
+        letter-spacing: 0.06em;
+        color: var(--muted-dim);
+    }
+    .form-field input,
+    .form-field select {
+        width: 100%;
+        height: 40px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: 5px;
+        background: #0c0f13;
+        color: var(--text);
+        font-family: var(--sans);
+        font-size: 0.89rem;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+    }
+    .form-field input::placeholder { color: var(--muted-dim); }
+    .form-field select {
+        appearance: none;
+        -webkit-appearance: none;
+        padding-right: 34px;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' viewBox='0 0 10 6'%3E%3Cpath d='M1 1l4 4 4-4' fill='none' stroke='%239aa0a8' stroke-width='1.4' stroke-linecap='round'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+    }
+    .form-field input:focus,
+    .form-field select:focus {
+        outline: none;
+        border-color: rgba(201, 163, 90, 0.65);
+        box-shadow: 0 0 0 3px rgba(201, 163, 90, 0.1);
+        background-color: #0e1116;
+    }
+    .form-field.has-error input,
+    .form-field.has-error select {
+        border-color: rgba(224, 93, 93, 0.55);
+    }
+    .field-hint {
+        margin: 5px 0 0;
+        font-family: var(--mono);
+        font-size: 0.57rem;
+        letter-spacing: 0.03em;
+        color: var(--muted-dim);
+    }
+    .field-errors {
+        margin: 6px 0 0;
+        padding: 0;
+        list-style: none;
+        color: #eda1a1;
+        font-size: 0.76rem;
+        line-height: 1.5;
+    }
+    .field-errors li {
+        display: flex;
+        align-items: flex-start;
+        gap: 6px;
+    }
+    .field-errors li::before {
+        content: "";
+        width: 4px;
+        height: 4px;
+        margin-top: 7px;
+        border-radius: 50%;
+        background: var(--red);
+        flex-shrink: 0;
+    }
+    .form-actions {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        flex-wrap: wrap;
+        margin-top: 4px;
+        padding-top: 17px;
+        border-top: 1px solid var(--border);
+    }
+    .preview-panel { position: sticky; top: 84px; }
+    .preview-plate {
+        display: flex;
+        align-items: center;
+        gap: 13px;
+        padding: 13px;
+        border: 1px solid var(--border);
+        border-left: 2px solid var(--blue);
+        border-radius: 5px;
+        background:
+            linear-gradient(180deg, rgba(255, 255, 255, 0.02), transparent 55%),
+            var(--surface-2);
+        transition: border-color 0.15s ease;
+    }
+    .preview-avatar {
+        width: 50px;
+        height: 50px;
+        flex-shrink: 0;
+        object-fit: cover;
+        border: 1px solid var(--border-strong);
+        border-radius: 4px;
+        background: #0c0f13;
+    }
+    .preview-body { flex: 1; min-width: 0; }
+    .preview-title {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        flex-wrap: wrap;
+        font-size: 0.86rem;
+        font-weight: 600;
+    }
+    .preview-title span:first-child { color: var(--text); }
+    .preview-meta {
+        margin: 5px 0 7px;
+        font-family: var(--mono);
+        font-size: 0.6rem;
+        letter-spacing: 0.02em;
+        color: var(--muted);
+    }
+    .preview-meta strong { color: var(--text-soft); font-weight: 600; }
+    .preview-note {
+        margin: 14px 0 0;
+        font-size: 0.76rem;
+        line-height: 1.6;
+        color: var(--muted);
+    }
+    .preview-facts {
+        margin: 14px 0 0;
+        padding: 14px 0 0;
+        border-top: 1px solid var(--border);
+        display: grid;
+        gap: 9px;
+    }
+    .preview-fact {
+        display: flex;
+        align-items: baseline;
+        justify-content: space-between;
+        gap: 10px;
+        font-size: 0.76rem;
+    }
+    .preview-fact span { color: var(--muted); }
+    .preview-fact strong {
+        font-family: var(--mono);
+        font-size: 0.63rem;
+        font-weight: 600;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: var(--text-soft);
+    }
+    @media (max-width: 840px) {
+        .enlist-shell { grid-template-columns: 1fr; max-width: 620px; }
+        .enlist-head { max-width: 620px; }
+        .preview-panel { position: static; }
+    }
+    @media (max-width: 520px) {
+        .form-row-2 { grid-template-columns: 1fr; }
+        .form-actions .btn { flex: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="enlist-head">
+    <p class="eyebrow">Recruitment &middot; New Service Record</p>
+    <h1 class="page-title">Enlist a Fighter</h1>
+    <p class="page-sub">Raise a new unit for the Blue Legion or Red Horde. Assign its class, condition, and striking power before it joins the order of battle.</p>
+</div>
+
+<div class="enlist-shell">
+    <section class="panel">
+        <div class="form-head">
+            <h2 class="section-title">Military Enlistment Warrant</h2>
+            <p class="section-sub">All fields are required unless marked optional. The unit enters the roster immediately on submission.</p>
+        </div>
+
+        {% if form.errors %}
+            <div class="alert error">
+                <strong>Correct the flagged fields below.</strong>
+                {{ form.non_field_errors }}
+            </div>
+        {% endif %}
+
+        <form method="post" action="{% url 'unit_create' %}" class="form-grid" novalidate>
+            {% csrf_token %}
+            <div class="form-field {% if form.name.errors %}has-error{% endif %}">
+                <label for="{{ form.name.id_for_label }}">{{ form.name.label }}</label>
+                {{ form.name }}
+                {% if form.name.errors %}
+                    <ul class="field-errors">{% for err in form.name.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                {% endif %}
+            </div>
+
+            <div class="form-row-2">
+                <div class="form-field {% if form.unit_type.errors %}has-error{% endif %}">
+                    <label for="{{ form.unit_type.id_for_label }}">{{ form.unit_type.label }}</label>
+                    {{ form.unit_type }}
+                    {% if form.unit_type.errors %}
+                        <ul class="field-errors">{% for err in form.unit_type.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+                <div class="form-field {% if form.team.errors %}has-error{% endif %}">
+                    <label for="{{ form.team.id_for_label }}">{{ form.team.label }}</label>
+                    {{ form.team }}
+                    {% if form.team.errors %}
+                        <ul class="field-errors">{% for err in form.team.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-row-2">
+                <div class="form-field {% if form.health.errors %}has-error{% endif %}">
+                    <label for="{{ form.health.id_for_label }}">{{ form.health.label }} <span class="field-optional">0&ndash;100</span></label>
+                    {{ form.health }}
+                    <p class="field-hint">Starting condition; 100 is full strength.</p>
+                    {% if form.health.errors %}
+                        <ul class="field-errors">{% for err in form.health.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+                <div class="form-field {% if form.attack_points.errors %}has-error{% endif %}">
+                    <label for="{{ form.attack_points.id_for_label }}">Attack Points <span class="field-optional">0&ndash;50</span></label>
+                    {{ form.attack_points }}
+                    <p class="field-hint">Damage potential per combat step.</p>
+                    {% if form.attack_points.errors %}
+                        <ul class="field-errors">{% for err in form.attack_points.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                    {% endif %}
+                </div>
+            </div>
+
+            <div class="form-field {% if form.profile_image_link.errors %}has-error{% endif %}">
+                <label for="{{ form.profile_image_link.id_for_label }}">Profile Image Link <span class="field-optional">Optional URL</span></label>
+                {{ form.profile_image_link }}
+                <p class="field-hint">A square portrait works best. A standard crest is used if left blank.</p>
+                {% if form.profile_image_link.errors %}
+                    <ul class="field-errors">{% for err in form.profile_image_link.errors %}<li>{{ err }}</li>{% endfor %}</ul>
+                {% endif %}
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary">Add</button>
+                <a href="{% url 'unit_list' %}" class="btn btn-secondary">Cancel</a>
+            </div>
+        </form>
+    </section>
+
+    <aside class="panel preview-panel">
+        <div class="panel-head panel-head-tight">
+            <div>
+                <h2 class="section-title">Field Preview</h2>
+                <p class="section-sub">Live card stamp for the War Room roster.</p>
+            </div>
+            <span class="eyebrow-plain">Live</span>
+        </div>
+
+        <div class="preview-plate" id="preview-card">
+            <img
+                id="preview-img"
+                class="preview-avatar"
+                width="50"
+                height="50"
+                alt="Preview avatar"
+                src="data:image/svg+xml;utf8,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%2250%22 height=%2250%22 viewBox=%220 0 50 50%22><rect width=%2250%22 height=%2250%22 fill=%22%2312151a%22/><text x=%2225%22 y=%2231%22 font-size=%2220%22 text-anchor=%22middle%22 fill=%22%23c9a35a%22 font-family=%22serif%22>U</text></svg>"
+            >
+            <div class="preview-body">
+                <div class="preview-title">
+                    <span id="preview-name">New Fighter</span>
+                    <span id="preview-team" class="badge badge-blue">Blue</span>
+                </div>
+                <div class="preview-meta">
+                    <span id="preview-type">Infantry</span> &middot; HP <strong id="preview-hp">100</strong> &middot; ATK <strong id="preview-atk">0</strong>
+                </div>
+                <div class="hp-track"><div id="preview-hp-bar" class="hp-fill hp-high" style="width: 100%;"></div></div>
+            </div>
+        </div>
+
+        <p class="preview-note">The preview updates as the warrant is completed. Portrait errors fall back to the fortress crest automatically.</p>
+
+        <div class="preview-facts">
+            <div class="preview-fact"><span>Faction</span><strong>Blue or Red</strong></div>
+            <div class="preview-fact"><span>Classes</span><strong>Infantry &middot; Cannon &middot; Cavalry &middot; Knight</strong></div>
+            <div class="preview-fact"><span>Entry point</span><strong>War Room roster</strong></div>
+        </div>
+    </aside>
+</div>
+
+<script>
+    (function() {
+        const nameEl = document.getElementById("id_name");
+        const typeEl = document.getElementById("id_unit_type");
+        const teamEl = document.getElementById("id_team");
+        const hpEl = document.getElementById("id_health");
+        const atkEl = document.getElementById("id_attack_points");
+        const imgEl = document.getElementById("id_profile_image_link");
+
+        const pCard = document.getElementById("preview-card");
+        const pName = document.getElementById("preview-name");
+        const pType = document.getElementById("preview-type");
+        const pTeam = document.getElementById("preview-team");
+        const pHp = document.getElementById("preview-hp");
+        const pAtk = document.getElementById("preview-atk");
+        const pBar = document.getElementById("preview-hp-bar");
+        const pImg = document.getElementById("preview-img");
+        if (!pCard || !pImg) return;
+        const fallbackSvg = pImg.src;
+
+        function update() {
+            pName.textContent = (nameEl && nameEl.value.trim()) || "New Fighter";
+            pType.textContent = (typeEl && typeEl.value) || "Infantry";
+            const team = (teamEl && teamEl.value) || "Blue";
+            pTeam.textContent = team;
+            pTeam.className = "badge " + (team === "Red" ? "badge-red" : "badge-blue");
+            pCard.style.borderLeftColor = team === "Red" ? "var(--red)" : "var(--blue)";
+
+            const hp = Math.max(0, Math.min(100, parseInt((hpEl && hpEl.value) || "100", 10) || 0));
+            pHp.textContent = hp;
+            pBar.style.width = hp + "%";
+            pBar.className = "hp-fill " + (hp > 60 ? "hp-high" : hp >= 25 ? "hp-mid" : "hp-low");
+
+            pAtk.textContent = (atkEl && atkEl.value) || "0";
+            if (imgEl && imgEl.value.trim()) {
+                pImg.onerror = () => { pImg.src = fallbackSvg; };
+                pImg.src = imgEl.value.trim();
+            } else {
+                pImg.src = fallbackSvg;
+            }
+        }
+        [nameEl, typeEl, teamEl, hpEl, atkEl, imgEl].forEach(el => {
+            if (el) el.addEventListener("input", update);
+            if (el) el.addEventListener("change", update);
+        });
+        update();
+    })();
+</script>
+{% endblock %}
